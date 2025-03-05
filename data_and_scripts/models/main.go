@@ -28,6 +28,12 @@ func main(){
     2. Miners are rational and profit maximizing 
     3. Miners have imperfect information about the mining game
     4. Miners have access to the same technology and Hardware
+    
+
+    Simulate payouts based on the data in the spreadsheet (bitcoin_metrics_and_energy_updated_final_manually_scaled.xlsx)
+    1. Calculate the daily revenue for each miner type 
+    2. Calculate the daily cost for each miner type 
+    3. Calculate the daily profit for each miner type 
 
     */
 }
