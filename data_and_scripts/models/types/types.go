@@ -18,9 +18,9 @@ type Miner struct {
 
 var MinerTypes = []MinerType{
     {"Small", 90, 90},
-    {"Medium", 180, 450},
-    {"Large", 540, 900},
-    {"Industrial", 990, 900000},
+    {"Medium", 300, 300},
+    {"Large", 720, 720},
+    {"Industrial", 10000, 10000},
 }
 
 type Strategy int
@@ -28,7 +28,6 @@ type Strategy int
 const (
     SoloMining Strategy = iota 
     PoolMining 
-    NoMining
     SwitchingPool
 )
 
@@ -63,7 +62,6 @@ type Region struct {
 // Field names match the Excel column headers we observed
 type DataRow struct {
     Timestamp string              // timestamp
-    TotalHashrate float64         // hash_rate
     ConvertedHash float64         // Converted hash
     BTCPriceUSD float64           // BTC market price usd
     TransactionFees float64       // transaction fees btc

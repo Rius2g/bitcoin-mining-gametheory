@@ -34,7 +34,6 @@ func LoadDataRows(filePath string) ([]t.DataRow, error) {
         
         // Based on the Excel columns we observed
         dr.Timestamp = row[0]
-        dr.TotalHashrate = parseFloatOrZero(row[1])
         dr.ConvertedHash = parseFloatOrZero(row[2])
         dr.BTCPriceUSD = parseFloatOrZero(row[3])
         dr.TransactionFees = parseFloatOrZero(row[4])
