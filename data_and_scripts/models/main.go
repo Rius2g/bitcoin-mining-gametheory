@@ -121,6 +121,7 @@ func createMinerOfType(minerType t.MinerType, r *rand.Rand) t.Miner {
 
 
 // Modified simulation function to take a specific miner type
+// Modified simulation function to take a specific miner type
 func runSimulationWithMinerType(dataRows []t.DataRow, minerType t.MinerType, r *rand.Rand) t.SimulationResult {
     // 1. Create miner of the specified type
     miner := createMinerOfType(minerType, r)
@@ -158,9 +159,8 @@ func runSimulationWithMinerType(dataRows []t.DataRow, minerType t.MinerType, r *
             dataRow := dataRows[startIdx+i]
             electricityCost := getElectricityCost(region, dataRow)
             totalHashrate := float64ToBigInt(dataRow.ConvertedHash)
-
             
-            // Calculate profit for this 3-hour period
+            // Calculate profit for this 3-hour period - now passing the random generator
             periodProfit := payout.CalculatePayout(
                 dataRow.BTCPriceUSD,
                 totalHashrate,
@@ -170,6 +170,7 @@ func runSimulationWithMinerType(dataRows []t.DataRow, minerType t.MinerType, r *
                 false, // Not in a pool
                 t.MiningPool{}, // Empty pool (not used)
                 dataRow.BlockReward,
+                r, // Pass the random number generator
             )
             
             totalProfit += periodProfit
@@ -183,9 +184,8 @@ func runSimulationWithMinerType(dataRows []t.DataRow, minerType t.MinerType, r *
             dataRow := dataRows[startIdx+i]
             electricityCost := getElectricityCost(region, dataRow)
             totalHashrate := float64ToBigInt(dataRow.ConvertedHash)
- 
             
-            // Calculate profit for this 3-hour period
+            // Calculate profit for this 3-hour period - now passing the random generator
             periodProfit := payout.CalculatePayout(
                 dataRow.BTCPriceUSD,
                 totalHashrate,
@@ -195,11 +195,11 @@ func runSimulationWithMinerType(dataRows []t.DataRow, minerType t.MinerType, r *
                 true, // In a pool
                 pool,
                 dataRow.BlockReward,
+                r, // Pass the random number generator
             )
             
             totalProfit += periodProfit
         }
-    
     
     case t.SwitchingPool:
         // Switch pools halfway through the time interval
@@ -211,16 +211,15 @@ func runSimulationWithMinerType(dataRows []t.DataRow, minerType t.MinerType, r *
         for i := 0; i < periodsNeeded; i++ {
             dataRow := dataRows[startIdx+i]
             electricityCost := getElectricityCost(region, dataRow)
-
             totalHashrate := float64ToBigInt(dataRow.ConvertedHash)
 
-             // Use the appropriate pool based on where we are in the time interval
+            // Use the appropriate pool based on where we are in the time interval
             currentPool := pool1
             if i >= switchPoint {
                 currentPool = pool2
             }
             
-            // Calculate profit for this 3-hour period
+            // Calculate profit for this 3-hour period - now passing the random generator
             periodProfit := payout.CalculatePayout(
                 dataRow.BTCPriceUSD,
                 totalHashrate,
@@ -230,6 +229,7 @@ func runSimulationWithMinerType(dataRows []t.DataRow, minerType t.MinerType, r *
                 true, // In a pool
                 currentPool,
                 dataRow.BlockReward,
+                r, // Pass the random number generator
             )
             
             totalProfit += periodProfit
