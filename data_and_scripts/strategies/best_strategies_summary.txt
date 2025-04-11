@@ -1,0 +1,6 @@
+Best Strategy by Market Condition and Miner Size:
+                         Bull             Steady               Bear
+Small       PPLNS Pool Mining  PPLNS Pool Mining  PPLNS Pool Mining
+Medium      PPLNS Pool Mining  PPLNS Pool Mining  PPLNS Pool Mining
+Large       PPLNS Pool Mining  PPLNS Pool Mining  PPLNS Pool Mining
+Industrial  PPLNS Pool Mining      Hybrid Mining  PPLNS Pool Mining
