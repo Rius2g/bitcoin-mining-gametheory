@@ -485,74 +485,100 @@ def create_mining_pool_strategies(miner_hashrate):
     ]
     return pool_strategies
 
-def run_mining_simulation(file_path, miner_size="Medium"):
+def run_mining_simulation(file_path, miner_size, num_iterations=10, random_seed_start=42):
     """
     Run the mining simulation for the given miner size.
     
     miner_size options: "Small", "Medium", "Large", "Industrial"
     Each is mapped to a specific miner hashrate (TH/s).
     """
-    miner_sizes = {
-        "Small": 10000,            # 10 PH/s
-        "Medium": 100000,          # 100 PH/s
-        "Large": 1000000,          # 1 EH/s
-        "Industrial": 10000000     # 10 EH/s
-    }
-    miner_hashrate = miner_sizes.get(miner_size, 10000)
-    print(f"Running simulation for {miner_size} miner with {miner_hashrate} TH/s")
+    print(f"Running simulation for {miner_size}")
     
     df = load_data(file_path)
+
+    all_combined_results = []
+    all_strategies = None
+
+    for i in range(num_iterations):
+        seed = random_seed_start + i 
+        np.random.seed(seed) 
+        random.seed(seed)
+
+        print(f"Iteration {i+1}/{num_iterations} with seed {seed}")
     
-    avg_network_hashrate = df['hash_rate'].mean() * 1000  # in TH/s
-    for size, hashrate in miner_sizes.items():
-        network_share = hashrate / avg_network_hashrate
-        blocks_in_period = 18
-        prob_per_period = 1 - (1 - network_share) ** blocks_in_period
-        expected_blocks = prob_per_period * len(df)
-        print(f"{size} miner: {network_share*100:.6f}% of network, {prob_per_period*100:.6f}% chance per period, expected {expected_blocks:.2f} blocks over dataset")
-    
-    strategies = create_mining_pool_strategies(miner_hashrate)
-    
-    results = {}
-    for strategy in strategies:
-        print(f"Simulating {strategy.name}...")
-        result_df = strategy.run_simulation(df)
-        results[strategy.name] = result_df
+        miner_sizes = {
+            "Small": 10000,          # 10 PH/s
+            "Medium": 100000,        # 100 PH/s
+            "Large": 1000000,        # 1 EH/s
+            "Industrial": 10000000   # 10 EH/s
+        }
+        miner_hashrate = miner_sizes.get(miner_size, 10000)
         
-        if isinstance(strategy, SoloMining) or isinstance(strategy, SoloPool):
-            blocks_found = getattr(strategy, 'blocks_found', 0)
-            print(f"{strategy.name} blocks found: {blocks_found}")
-            if blocks_found > 0 and hasattr(strategy, 'block_timestamps'):
-                print("Block find details:")
-                for i, (timestamp, reward) in enumerate(zip(strategy.block_timestamps, strategy.block_rewards)):
-                    print(f"  Block {i+1}: {timestamp} - {reward:.8f} BTC")
-            network_share = miner_hashrate / avg_network_hashrate
-            blocks_in_period = 18
-            prob_per_period = 1 - (1 - network_share) ** blocks_in_period
-            expected_blocks = prob_per_period * len(df)
-            print(f"Expected blocks: {expected_blocks:.2f}, Actual blocks: {blocks_found}")
-            print(f"Ratio: {blocks_found / expected_blocks if expected_blocks > 0 else 0:.2f}")
+        strategies = create_mining_pool_strategies(miner_hashrate)
+        if all_strategies is None:
+            all_strategies = strategies  # Keep reference to strategy objects
         
-        if isinstance(strategy, PoolHopping) and hasattr(strategy, 'pool_history'):
-            print(f"Pool hopping transitions: {len(strategy.pool_history)}")
-            if len(strategy.pool_history) > 0:
-                print("Top 5 pool transitions:")
-                for i, hop in enumerate(strategy.pool_history[:5]):
-                    print(f"  {i+1}: {hop['from_pool']} -> {hop['to_pool']} ({hop['improvement']:.2f}% improvement)")
+        # Run simulation for each strategy in this iteration
+        results = {}
+        for strategy in strategies:
+            print(f"  Simulating {strategy.name}...")
+            result_df = strategy.run_simulation(df)
+            results[strategy.name] = result_df
+            
+            # Log details for solo mining strategies
+            if isinstance(strategy, SoloMining) or isinstance(strategy, SoloPool):
+                blocks_found = getattr(strategy, 'blocks_found', 0)
+                print(f"  {strategy.name} blocks found in iteration {i+1}: {blocks_found}")
+        
+        # Combine results for this iteration
+        combined_results = pd.DataFrame(index=df.index)
+        
+        for strategy_name, result_df in results.items():
+            combined_results[f"{strategy_name}_reward"] = result_df["reward"]
+            combined_results[f"{strategy_name}_cumulative"] = result_df["cumulative_reward"]
+        
+        # Convert cumulative BTC rewards to USD
+        for strategy_name in [s.name for s in strategies]:
+            btc_cumulative = combined_results[f"{strategy_name}_cumulative"]
+            combined_results[f"{strategy_name}_cumulative_usd"] = btc_cumulative * df["BTC market price usd"]
+        
+        all_combined_results.append(combined_results)
     
-    # Combine all strategy results into one dataframe for further analysis.
-    combined_results = pd.DataFrame(index=df.index)
+    # Average the results from all iterations
+    averaged_results = average_simulation_results(all_combined_results, all_strategies)
     
-    for strategy_name, result_df in results.items():
-        combined_results[f"{strategy_name}_reward"] = result_df["reward"]
-        combined_results[f"{strategy_name}_cumulative"] = result_df["cumulative_reward"]
-    
-    # Convert cumulative BTC rewards to USD using BTC market price.
-    for strategy_name in [s.name for s in strategies]:
-        btc_cumulative = combined_results[f"{strategy_name}_cumulative"]
-        combined_results[f"{strategy_name}_cumulative_usd"] = btc_cumulative * df["BTC market price usd"]
-    
-    return combined_results, df, strategies
+    return averaged_results, df, all_strategies
+
+
+def average_simulation_results(all_combined_results, all_strategies):
+    """
+    Average the results accross all iterations
+
+    Parameters: 
+    ----------
+    all_combined_results: List of DataFrames containing the results from each iteration. 
+    all_strategies: List of strategy objects used in the simulation.
+
+    returns: 
+    -------- 
+    DataFrame : The averaged results
+    """
+
+    first_df = all_combined_results[0] 
+    averaged_results = pd.DataFrame(index=first_df.index) 
+
+    for strategy in all_strategies: 
+        reward_cols = [df[f"{strategy.name}_reward"] for df in all_combined_results] 
+        averaged_results[f"{strategy.name}_reward"] = sum(reward_cols) / len(reward_cols) 
+
+        cumul_cols = [df[f"{strategy.name}_cumulative"] for df in all_combined_results]
+        averaged_results[f"{strategy.name}_cumulative"] = sum(cumul_cols) / len(cumul_cols) 
+
+        usd_cols = [df[f"{strategy.name}_cumulative_usd"] for df in all_combined_results] 
+        averaged_results[f"{strategy.name}_cumulative_usd"] = sum(usd_cols) / len(usd_cols) 
+
+    return averaged_results
+
 
 # ============================================================================
 # ANALYSIS & VISUALIZATION FUNCTIONS
@@ -737,7 +763,7 @@ def compare_miner_sizes(all_results):
 # MAIN FUNCTION
 # ============================================================================
 
-def main():
+def main(num_iterations=10):
     file_path = 'bitcoin_metrics_and_energy_updated_final_manually_scaled.xlsx'
     miner_sizes = ["Small", "Medium", "Large", "Industrial"]
     
@@ -746,7 +772,7 @@ def main():
     for miner_size in miner_sizes:
         print(f"Running analysis for {miner_size} miner")
         
-        combined_results, original_df, strategies = run_mining_simulation(file_path, miner_size)
+        combined_results, original_df, strategies = run_mining_simulation(file_path, miner_size, num_iterations)
         analysis = analyze_results(combined_results, original_df, strategies, miner_size)
         
         print(f"\nSummary for {miner_size} miner (Top 10 strategies):")
@@ -755,9 +781,18 @@ def main():
         all_results[miner_size] = analysis
     
     comparison = compare_miner_sizes(all_results)
+
+    for key in comparison:
+        if isinstance(comparison[key], pd.DataFrame):
+            plot_path = f"plots/{key}_iter{num_iterations}.png"
+            comparison[key].plot(kind='bar', figsize=(16, 10))
+            plt.title(f"{key.replace('_', ' ').title()} ({num_iterations} iterations)")
+            plt.tight_layout()
+            plt.savefig(plot_path)
+            plt.close()
     
     return all_results
 
 if __name__ == "__main__":
-    all_results = main()
+    all_results = main(num_iterations=1000)
 
