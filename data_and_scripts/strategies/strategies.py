@@ -71,7 +71,7 @@ class MiningStrategy:
         self.cumulative_rewards = []
         self.total_btc = 0
         
-        for idx, row in tqdm(df.iterrows(), total=len(df), desc=f"Simulating {self.name}"):
+        for idx, row in tqdm(df.iterrows(), total=len(df)):
             reward = self.calculate_reward(row)
             self.rewards.append(reward)
             self.timestamps.append(idx)
@@ -99,7 +99,7 @@ class SoloMining(MiningStrategy):
         self.block_rewards = []
     
     def calculate_reward(self, row):
-        network_hashrate = row['hash_rate'] * 1000  # Convert EH/s to TH/s
+        network_hashrate = row['hash_rate'] / 1_000_000
         p_block = self.miner_hashrate / network_hashrate
         blocks_in_period = 18  # 3 hours / 10-minute target (18 blocks)
         blocks_found = np.random.binomial(blocks_in_period, p_block)
@@ -122,7 +122,7 @@ class FPPSPool(MiningStrategy):
         self.efficiency = efficiency
     
     def calculate_reward(self, row):
-        network_hashrate = row['hash_rate'] * 1000  # Convert EH/s to TH/s
+        network_hashrate = row['hash_rate'] / 1_000_000  # Convert EH/s to TH/s
         hashrate_share = self.miner_hashrate / network_hashrate
         blocks_in_period = 18
         block_reward = row['Block reward (BTC)'] + row['transaction fees btc']
@@ -140,7 +140,7 @@ class PPLNSPool(MiningStrategy):
         self.consistency_factor = 1.0  # Simulate loyalty benefits.
     
     def calculate_reward(self, row):
-        network_hashrate = row['hash_rate'] * 1000
+        network_hashrate = row['hash_rate'] / 1_000_000
         hashrate_share = self.miner_hashrate / network_hashrate
         blocks_in_period = 18
         block_reward = row['Block reward (BTC)'] + row['transaction fees btc']
@@ -159,7 +159,7 @@ class PPSPlusPool(MiningStrategy):
         self.efficiency = efficiency
     
     def calculate_reward(self, row):
-        network_hashrate = row['hash_rate'] * 1000
+        network_hashrate = row['hash_rate'] / 1_000_000
         hashrate_share = self.miner_hashrate / network_hashrate
         blocks_in_period = 18
         block_reward = row['Block reward (BTC)'] + row['transaction fees btc']
@@ -177,7 +177,7 @@ class TIDESPool(MiningStrategy):
         self.consistency_factor = 1.0
     
     def calculate_reward(self, row):
-        network_hashrate = row['hash_rate'] * 1000
+        network_hashrate = row['hash_rate'] / 1_000_000
         hashrate_share = self.miner_hashrate / network_hashrate
         blocks_in_period = 18
         block_reward = row['Block reward (BTC)'] + row['transaction fees btc']
@@ -195,7 +195,7 @@ class SoloPool(MiningStrategy):
         self.blocks_found = 0
     
     def calculate_reward(self, row):
-        network_hashrate = row['hash_rate'] * 1000
+        network_hashrate = row['hash_rate'] / 1_000_000
         p_block = self.miner_hashrate / network_hashrate
         blocks_in_period = 18
         blocks_found = np.random.binomial(blocks_in_period, p_block)
@@ -281,7 +281,7 @@ class PoolHopping(MiningStrategy):
             best_expected = 0
             
             for pool in self.pools:
-                network_hashrate = row['hash_rate'] * 1000
+                network_hashrate = row['hash_rate'] / 1_000_000
                 hashrate_share = self.miner_hashrate / network_hashrate
                 blocks_in_period = 18
                 block_reward = row['Block reward (BTC)'] + row['transaction fees btc']
@@ -310,7 +310,7 @@ class PoolHopping(MiningStrategy):
                     best_expected = expected
                     best_pool = pool
             
-            network_hashrate = row['hash_rate'] * 1000
+            network_hashrate = row['hash_rate'] / 1_000_000
             hashrate_share = self.miner_hashrate / network_hashrate
             blocks_in_period = 18
             block_reward = row['Block reward (BTC)'] + row['transaction fees btc']
@@ -343,7 +343,7 @@ class PoolHopping(MiningStrategy):
                 self.interval_counter = 0
                 current_expected -= self.hopping_cost
         
-        network_hashrate = row['hash_rate'] * 1000
+        network_hashrate = row['hash_rate'] / 1_000_000
         hashrate_share = self.miner_hashrate / network_hashrate
         blocks_in_period = 18
         block_reward = row['Block reward (BTC)'] + row['transaction fees btc']
@@ -379,14 +379,14 @@ class GreenMining(MiningStrategy):
     Assumes each row has an "energy_cost" column (USD per period) and uses 
     the "BTC market price usd" for conversion.
     """
-    def __init__(self, miner_hashrate, pool_name="Green Pool", fee=0.02, efficiency=1.0, energy_threshold=1000):
+    def __init__(self, miner_hashrate, pool_name="Green Pool", fee=0.02, efficiency=1.0, energy_threshold=1_000_000):
         super().__init__(f"{pool_name} (Green Mining)", miner_hashrate)
         self.pool_fee = fee
         self.efficiency = efficiency
         self.energy_threshold = energy_threshold  # USD threshold per period
     
     def calculate_reward(self, row):
-        network_hashrate = row['hash_rate'] * 1000
+        network_hashrate = row['hash_rate'] / 1_000_000
         hashrate_share = self.miner_hashrate / network_hashrate
         blocks_in_period = 18
         block_reward = row['Block reward (BTC)'] + row['transaction fees btc']
@@ -476,7 +476,7 @@ def create_mining_pool_strategies(miner_hashrate):
         HybridMining(miner_hashrate, solo_ratio=0.3, pool_name="ViaBTC", pool_type="PPLNS", pool_fee=0.02),
         PoolHopping(miner_hashrate, hop_threshold=0.05),
         # New strategies:
-        GreenMining(miner_hashrate, pool_name="EcoPool", fee=0.02, efficiency=1.0, energy_threshold=1000),
+        GreenMining(miner_hashrate, pool_name="EcoPool", fee=0.02, efficiency=1.0, energy_threshold=1_000_000),
         MultiPoolMining(miner_hashrate, pool_allocations=[
             {"type": "FPPS", "pool_name": "Foundry USA", "allocation": 0.4, "fee": 0.0, "efficiency": 1.0},
             {"type": "PPLNS", "pool_name": "Antpool", "allocation": 0.3, "fee": 0.0, "efficiency": 0.97},
@@ -492,7 +492,6 @@ def run_mining_simulation(file_path, miner_size, num_iterations=10, random_seed_
     miner_size options: "Small", "Medium", "Large", "Industrial"
     Each is mapped to a specific miner hashrate (TH/s).
     """
-    print(f"Running simulation for {miner_size}")
     
     df = load_data(file_path)
 
@@ -506,12 +505,12 @@ def run_mining_simulation(file_path, miner_size, num_iterations=10, random_seed_
 
         print(f"Iteration {i+1}/{num_iterations} with seed {seed}")
     
-        miner_sizes = {
+          miner_sizes = {
             "Small": 10000,          # 10 PH/s
             "Medium": 100000,        # 100 PH/s
             "Large": 1000000,        # 1 EH/s
             "Industrial": 10000000   # 10 EH/s
-        }
+        }       
         miner_hashrate = miner_sizes.get(miner_size, 10000)
         
         strategies = create_mining_pool_strategies(miner_hashrate)
@@ -521,14 +520,12 @@ def run_mining_simulation(file_path, miner_size, num_iterations=10, random_seed_
         # Run simulation for each strategy in this iteration
         results = {}
         for strategy in strategies:
-            print(f"  Simulating {strategy.name}...")
             result_df = strategy.run_simulation(df)
             results[strategy.name] = result_df
             
             # Log details for solo mining strategies
             if isinstance(strategy, SoloMining) or isinstance(strategy, SoloPool):
                 blocks_found = getattr(strategy, 'blocks_found', 0)
-                print(f"  {strategy.name} blocks found in iteration {i+1}: {blocks_found}")
         
         # Combine results for this iteration
         combined_results = pd.DataFrame(index=df.index)
@@ -794,5 +791,5 @@ def main(num_iterations=10):
     return all_results
 
 if __name__ == "__main__":
-    all_results = main(num_iterations=1000)
+    all_results = main(num_iterations=1_000_000)
 
