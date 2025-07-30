@@ -1,0 +1,36 @@
+\begin{thebibliography}{4}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Albrecher et~al.(2022)Albrecher, Finger, and
+  Goffard]{albrecher2022blockchain}
+Hansj{\"o}rg Albrecher, Dina Finger, and Pierre-O Goffard.
+\newblock Blockchain mining in pools: Analyzing the trade-off between
+  profitability and ruin.
+\newblock \emph{Insurance: Mathematics and Economics}, 105:\penalty0 313--335,
+  2022.
+
+\bibitem[Kiayias et~al.(2016)Kiayias, Koutsoupias, Kyropoulou, and
+  Tselekounis]{kiayias2016blockchain}
+Aggelos Kiayias, Elias Koutsoupias, Maria Kyropoulou, and Yiannis Tselekounis.
+\newblock Blockchain mining games.
+\newblock In \emph{Proceedings of the 2016 ACM Conference on Economics and
+  Computation}, pages 365--382, 2016.
+
+\bibitem[Meirowitz and McCarty()]{meirowitzpolitical}
+Adam Meirowitz and Nolan McCarty.
+\newblock Political game theory.
+
+\bibitem[Tedeschi et~al.(2024)Tedeschi, Nohr, Dagenborg, and
+  Johansen]{tedeschi2024mining}
+Enrico Tedeschi, {\O}yvind Arne~Moen Nohr, H{\aa}vard Dagenborg, and Dag
+  Johansen.
+\newblock Mining profitability in bitcoin: Calculations of user-miner
+  equilibria and cost of mining.
+\newblock In \emph{IFIP International Conference on Distributed Applications
+  and Interoperable Systems}, pages 62--76. Springer, 2024.
+
+\end{thebibliography}

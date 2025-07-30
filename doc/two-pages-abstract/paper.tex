@@ -1,0 +1,196 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage[numbers]{natbib}
+\geometry{margin=1in}
+\usepackage[affil-it]{authblk}
+\geometry{margin=1in}
+
+% acronyms / glossary
+\usepackage[acronym,toc]{glossaries}
+\usepackage{siunitx}
+\setlength{\glsdescwidth}{15cm}
+\newglossary[slg]{symbolslist}{syi}{syg}{List of Symbols}
+\glsaddkey{unit}{\glsentrytext{\glslabel}}{\glsentryunit}{\GLsentryunit}{\glsunit}{\Glsunit}{\GLSunit}
+\loadglsentries{extra/acronyms.tex}
+\makeglossaries
+
+% solution from https://tex.stackexchange.com/questions/269565/glossaries-how-to-customize-list-of-symbols-with-additional-column-for-units
+\newglossarystyle{symbunitlong}{%
+	\setglossarystyle{long3col}% base this style on the list style
+	\renewenvironment{theglossary}{% Change the table type --> 3 columns
+		\begin{longtable}{lp{0.6\glsdescwidth}>{\centering\arraybackslash}p{2cm}}}%
+		{\end{longtable}}%
+	%
+	\renewcommand*{\glossaryheader}{%  Change the table header
+		\bfseries Sign & \bfseries Description & \bfseries Unit \\
+		\hline
+		\endhead}
+	\renewcommand*{\glossentry}[2]{%  Change the displayed items
+		\glstarget{##1}{\glossentryname{##1}} %
+		& \glossentrydesc{##1}% Description
+		& \glsunit{##1}  \tabularnewline
+	}
+}
+
+\title{Studying Bitcoin Miners' Strategies Under Uncertainty}
+\author{Enrico Tedeschi, Marius M{\o}ller-Hansen, H{\aa}vard Dagenborg}
+\affil{UiT - The Arctic University of Norway}
+\date{March 2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+	We introduce a Bayesian game-theoretic and simulation-based framework to study Bitcoin miner behavior under uncertainty. Each miner draws a private type that includes exogenous and endogenous variables such as electricity costs, hardware efficiency, and risk aversion. Strategies involve hash rate commitment and pool participation. By sampling these types and simulating strategic responses across market scenarios, we approximate Bayesian Nash Equilibria through Monte Carlo simulations, showing how type distributions and market volatility affect equilibrium outcomes. We define discrete mining pool categories with different fee structures and classify external environments into high, medium, and low profiatbility contexts. This structured model enables equilibrium benchmarking, risk analysis, and policy testing in decentralized mining networks.
+\end{abstract}
+
+\section{Introduction}
+Bitcoin’s \gls{pow} consensus relies on decentralized mining, where each participant invests computing resources to earn block rewards and transaction fees. Due to volatile market prices, fluctuating network hash rate, and spatially heterogeneous electricity costs, mining profitability is highly uncertain. Moreover, miners differ significantly in hardware performance and risk tolerance. These heterogeneities and information asymmetries motivate a Bayesian game-theoretic modeling approach\,\cite{kiayias2016blockchain,meirowitzpolitical}.
+
+In this paper, we define miners as players in a one-shot\footnote{each player makes one decision, all decisions are made simultaneously, and there are no future rounds.} Bayesian game with private types and incomplete information. Each miner selects a strategy (how much to mine and whether to join a pool) to maximize expected utility based on beliefs about others. To approximate equilibrium outcomes in realistic settings, we implement a Monte Carlo simulation engine informed by real-world mining hardware, cost distributions, and network parameters.
+
+%Bitcoin's \gls{pow} mining is a decentralized competition where participants (\emph{miners}) use computational power for a chance to earn rewards. Miner behavior is influenced by uncertain conditions: the price of Bitcoin is highly volatile (annualized volatility $\sim47\%$ vs $\sim12\%$ for gold\footnote{BlackRock as of April 2024}), and the total network hash rate fluctuates as miners enter or exit. These uncertainties make mining a risky endeavor, and miners must decide how to strategize (e.g., investing in hardware, turning machines on/off, or joining mining pools) without full knowledge of other miners' conditions. In practice, miners differ widely in \emph{private parameters} like electricity cost, hardware efficiency, and risk tolerance, which can significantly affect theor profitability. For example, electricity costs for mining vary significantly by location and contracts\,\cite{tedeschi2024mining}, meaning a miner paying $\$0.03$\,kWh can profit under conditions where another paying $\$0.10$\,kWh would incur losses. Likewise, hardware (or hash rate) efficiency (H/J) and individual risk appetite (preference for stable vs. volatile income) vary across miners. We therefore face a strategic scenario of \emph{incomplete information}, where each miner knows their own cost and traits but not those of others.
+%
+%Game theory provides a natural framework to analyze mining strategies and incentives.However, many prior game-theoretic analyses of Bitcoin mining assume complete information or identical players for tractability\,\cite{kiayias2016blockchain}. In reality, miners operate uder \emph{asymmetric information}, as they cannot observe each other's exact consts or hashing capacity in real time. This calls for a Bayesian game approach. Bayesian game theory deals with strategic decision-making under incomplete information: each player draws a private \emph{type} (miner's cost and other traits) and chooses an optimal strategy given beliefs about others' types\,\cite{meirowitzpolitical}. We model Bitcoin mining as a Bayesian game to capture how heterogeneity in private types shapes miner behavior in equilibrium. Our focus is on understanding \gls{bne} of the mining game, such as a strategy profile where no miner can improve their expected payoff by deviating, given uncertainty about others. By formulating the mining competition in this framework we can ask: \emph{How do miners with different private costs and risk profile behave?}, and also: \emph{How does uncertainty about others influence strategic choices like when to mine or whether to join a pool?}, and: \emph{How do external factors (price swings, policy changes) shift the equilibrium outcomes?}
+
+% todo: find a problem we are solving by doing so
+
+\section{Bayesian Game Formulation}
+\label{sec:bayesian-game}
+We model the Bitcoin mining competition as a one-shot Bayesian game with incomplete information. Let there be $N$ miners. Each miner $i$ has a private type vector:
+\begin{equation}
+	\theta_i(c_i, \eta_i, \kappa_i, \rho_i, \phi_i)
+\end{equation}
+where: $c_i$ is the electricity price (\$/kWh), $\eta_i$ represents the energy efficiency (J/TH), $\kappa_i$ is the capacity (TH/s), $\rho_i$ is the risk tolerance (0-1), and $\phi_i$ is the strategic preference (e.g., solo vs pool mining). Each miner choses an action, or strategy $s_i \in S$:
+\begin{itemize}
+	\item individual hash rate $h_i \in \big[ 0, \kappa_i\big]$,
+	\item strategy or mode of operation $m_i \in \bigl\{  \texttt{s}, \texttt{p}_{\texttt{\{b,m,s\}}}, \texttt{o}\bigl\}$, where they stand for:solo and pool mining, or offline. Pool is divided in big, medium, or small mining pools.
+\end{itemize}
+Formally, a \gls{bne} is a profile of strategy functions $\bigl\{ s^*_i(\theta_i)\bigl\}_{i=1}^{N}$, such that for each miner $i$, their equilibrium strategy maximizes expected utility, given their beliefs over others' types and assuming others follow their equilibrium strategies:
+\begin{equation}
+	s_i^*(\theta_i) \in \arg\max_{s_i} \mathbb{E}_{\theta_{-i}} \left[ u_i(s_i(\theta_i), s_{-i}^*(\theta_{-i}); \theta_i) \right]
+\end{equation}
+where $\theta_{-i}$ denotes the types of all miners except $i$, $s^*_{-i}(\theta_{-i})$ are the equilibrium strategies of other miners, and $u_i(\cdot)$ is miner $i$'s utility function, which depends on their action, others' actions, and their private type. The expected utility is taken over miner $i$’s beliefs about the types of other miners, typically assumed to be independently drawn from a known distribution. Since miners do not observe each other’s electricity cost or risk profile, they must reason strategically under uncertainty, using probabilistic beliefs about the rest of the network. The expected utility is :
+\begin{equation}
+	u_i = \mathbb{E} \biggr[ \frac{h_i}{H} (R+M)P(1-f_s) - k_i h_i\biggr]
+\end{equation}
+where $H$ is the total network hash rate, $R$ is the block reward, $M$ is the sum of transaction fees, $P$ is the Bitcoin price, $k_i = \frac{\eta_i}{10^6}$ is the cost per hash, $f_s$ is the pool fee based on selected strategy $s_i$.
+Table\,\ref{tab:pool-types} shows our values for different pool categories with a relative fee overcharge for earnings.
+
+\begin{table}[ht]
+	\centering
+	\begin{tabular}{|l|c|c|}
+		\hline
+		\textbf{Pool Type} & \textbf{Hash Share (\%)} & \textbf{Fee (\%)} \\
+		\hline
+		Small Pool ($\texttt{s}$)   & $<$ 1\%      & 0.0\% \\
+		Medium Pool ($\texttt{m}$)  & 1–5\%        & 1.0\% \\
+		Large Pool   ($\texttt{b}$) & $>$ 5\%      & 2.5\% \\
+		\hline
+	\end{tabular}
+	\caption{Classification of mining pool types by size and fee}
+	\label{tab:pool-types}
+\end{table}
+%
+%This equilibrium framework captures the fundamental trade-offs faced by real-world miners:
+%\begin{itemize}
+%	\item \emph{cost-benefit analysis} of mining given local electricity prices and hardware efficiency,
+%	\item \emph{risk management} through pooling decisions (to reduce variance in rewards),
+%	\item \emph{strategic differentiation} based on expectations about competitors.
+%\end{itemize}
+
+\section{Market Scenarios and Monte Carlo Simulation Setup}
+We define three mining environments to capture macroeconomic variation. We define them as \emph{good}, \emph{average}, and \emph{bad} environment to mine, and they are defined in Table\,\ref{tab:mining-envs}. Miners draw types from empirical or synthetic distributions. The electricity price $c_i$ is drawn from a multi-modal distribution (e.g., India, US, UK); $\eta_i$ and $\kappa_i$ are drawn from a dataframe of \gls{asic} models (e.g., Antminer S19 series); $\rho_i$ is drawn from a uniform distribution over the interval $[0,1)$, equivalent to a Beta(1,1) distribution; and $\phi_i$ is sampled via uniform assignment. Such scenarios reflect historically grounded boundary conditions of Bitcoin profitability cycles (e.g., bull runs, corrections, and downturns), and they allow factorial analysis of how equilibrium behavior shifts as a function of external contraints, holding miner type fixed.
+\begin{table}[ht]
+	\centering
+	\begin{tabular}{|l|c|c|c|}
+		\hline
+		\textbf{Scenario} & \textbf{BTC Price [\$]} & \textbf{Hashrate [EH/s]} & \textbf{Fee $\times$ Block [BTC]} \\
+		\hline
+		Good     & 100{,}000  & 400  & 0.8 \\
+		Average  & 60{,}000   & 600  & 0.4 \\
+		Bad      & 25{,}000   & 1000\protect\footnotemark  & 0.1 \\
+		\hline
+	\end{tabular}
+	\caption{Definition of mining environments used in simulations}
+	\label{tab:mining-envs}
+\end{table}
+	\footnotetext{current total Bitcoin hash rate $H\simeq 990$ EH/s.}
+
+For each scenario, we repeat the simulation for $10^8$ draws to approximate miner behavior in expectation. In each run:
+\begin{enumerate}
+	\item All miner types $\theta_1, \cdots, \theta_N$ are sampled independently.
+	\item An initial strategy profile is assigned (e.g., hash rate set to capacity or zero).
+	\item Each miner iteratively updates their action to maximize expected payoff given others' current strategies.
+	\item The system converges to a stable proofile (or $\epsilon$-equiibrium), which is logged for statistical aggregation.
+\end{enumerate}
+By comparing equilibrium outcomes across scenarios, we can identify \emph{regime-dependent thresholds} (e.g., the cost level above which miners go offline) and shifts in pool participation (e.g., small pools vanish in bad markets). The scenario-based structure also enables policy simulations, such as testing whether modifying fee dynamics or imposing carbon taxes would alter the strategic landscape for miners.
+
+%In a Bayesian game, each player $i$ has a private type $\theta_i$ drawn from a common prior distribution. The type encapsulates the player's private information relevant to the game. In our context, a miner's type vector might be defined as:
+%\begin{equation}
+%	\theta_i=(c_i, \eta_i, \rho_i)
+%\end{equation}
+%where:
+%\begin{itemize}
+%	\item Electricity price $c_i$ is the cost (in \$ per kWh) that a miner $i$ pays for power.
+%	\item Hardware efficiency $\eta_i$ is the hash power per watt (or energy cost per hash) for miner $i$'s equipment.
+%	\item Risk tolerance $\rho_i$ is a parameter reflecting miner $i$'s attitude toward risk (variance in rewards)
+%\end{itemize}
+%Each miner knows their own $\theta_i$ but not the exact $\theta_j$ of others, only the distribution. Strategies in a Bayesian game are functions mapping a miner's type to an action. Here an action could include decisions like how much hash power to contribute or whether to participate in a mining pool. A \emph{strategy} for miner $i$ is a function $s_i$ that takes their type $\theta_i$ as input and outputs an action. The collection of strategy functions $\{s_i\}_{i=1}^N$ defines how all players behave based on their own private information. The solution concept is the \gls{bne}, which is a profile of strategy functions $\{s_i^*(\theta_i)\}$, one for each miner $i$, such that for every possible private type $\theta_i$, the strategy $s_i^*(\theta_i)$ is a best response to the equilibrium strategies of the other miners. Formally, the equilibrium condition requires that for each miner $i$ and any possible type $\theta_i$, the strategy $s_i^*$ satisfies:
+%\begin{equation}
+%	s_i^*(\theta_i) \in \arg\max_{s_i} \mathbb{E}_{\theta_{-i}} \left[ u_i(s_i(\theta_i), s_{-i}^*(\theta_{-i}); \theta_i) \right]
+%\end{equation}
+%where:
+%\begin{itemize}
+%	\item $s_i^*(\theta_i)$ is the equilibrium action taken by miner $i$ when their type is $\theta_i$,
+%	\item $s_{-i}^*(\theta_{-i})$ denotes the equilibrium actions of the other miners for their types $\theta_{-i}$,
+%	\item $u_i$ is the expected payoff,
+%	\item and the expectation is taken over miner $i$'s beliefs about the types of other miners.
+%\end{itemize}
+%Intuitively, no miner, regardless of their private type, can gain by unilaterally deviating from $s_i^*$ if they expect others to play according to $s_{-i}^*$.
+
+%\section{Bayesian Mining Game Model}
+%We consider a static mining game played by $N$ miners simultaneously within a sinlge block interval. Each miner $i$ observes their type $\theta_i=(c_i,\eta_i,\rho_i)$ and chooses an action. The primary action is the hash rate $h_i$ that miner $i$ commits to mining (this can range from 0 up to their maximum hardware capacity). In addition, miners may choose whether to join a mining pool or mine solo, which we treat as part of their strategy.
+%
+%The payoff function captures the miner's expected reward minus costs. If a miner deploys hash power $h_i$ while others deploy $\{h_j : j\neq i\}$, the probability that miner $i$ finds the next block is approximately $\frac{h_i}{H}$ where $H=\sum_{j=1}^N h_j$ is the total network hash rate. The block reward is denoted $R$ ($3.125$ BTC currently) and let $P$ be the market price of Bitcoin (so $R \times P$ is the block rewards value in dollars). Miner $i$'s cost per hash (in \$ per hash per unit time) can be defined as $k_i$, which is increasing in $c_i$ and decreasing in $\eta_i$ (more efficient hardware or cheaper or cheaper electricity lowes $k_i$). For simplicity, we assume risk-nautral payoff in the base model. Miner $i$'s expected profit $u_i$ can be written as:
+%\begin{equation}
+%	u_i(h_i, h_{-i};\theta_i) = \frac{h_i}{\sum_{j=1}^{N}h_j}(R\cdot P) - k_i h_i
+%\end{equation}
+%This payoff reflects that miner $i$ earns the block reward with probability proportional to $h_i$, and incurs a cost $k_i h_i$ from electricity consumption and hardware waer. A risk-neutral miner will simply maximize this expected value. A risk-averse miner (low $\rho_i$) would effectively place an extra penalty on variance (more stable, lower returns). We incorporate risk aversion by considering that joining a mining pool yelds a steadier income stream: in a pool, miners contribute $h_i$ to a pool's total $H_{\text{pool}}$, and receive a share of each block reward equal to $\frac{h_i}{H_{\text{pool}}}RP$ (minus a small pool fee). Pool mining greatly reduces variance at the cost of fees and reliance on the pool operator. In our model, a miner's utility accounts for this trade-off: a risk-averse miner derives higher utility from the guaranteed portion of reward in a pool than from the equivalent expected value solo. Consequently, pool participation becomes a strategic choice: miners with high $\rho_i$ (risk-tolerant) might mine solo to avoid fees and capture full rewards, whereas miners with low $\rho_i$ prefer the insurance of a pool even if it slightly lowers their net expected payoff. Mining pools thus emerge endogenously as a risk-sharing mechanism\,\cite{albrecher2022blockchain}, and the equilibrium might involve a mix of solo and pooled miners depending on the distribution of risk preferences.
+%
+%Given the complexity of solving for analytic \gls{bne} in this $N$-player game, we employ a \emph{Monte Carlo simulation approach} to approximate the Bayesian Nash equilibrium under various scenarios. The simulation proceeds by drawing many random samples of the type vector $\theta = (\theta_1, \theta_2, \dots, \theta_N)$ from a specified joint distribution (e.g., assuming independent distributions for $c_i, \eta_i, \rho_i$ based on empirical or hypotetical data). For each draw, we simulate miners' best responses iteratively: initially, guess a set of strategies (e.g., thresholds on cost for mining or simple hashing levels), then let miners adjust their $h_i$ and pool-vs-solo decisions to improve payoffs given the other's strategies, until convergence to a stable profile. This process is repeated across numerous random realizations to estimate the equilibrium behavior in expectation. The Monte Carlo methodology allows us to observe how the system equilibrates on average, and to identify Bayesian Nash equilibria or $\epsilon$-equilibria in cases where an exact analytical solution is intractable. We validate that under equilibrium strategies, no miner type has incentive to deviate on average. Figure~\ref{%to do, include figure
+%} illustrates an example outcome from the simulation, showing how miners with different cost types choose their hash rates and whether they pool, under a given price scenario.
+
+% Example of Monte Carlo simulation results for a Bayesian mining game. (This placeholder figure depicts two groups of miners: low-cost and high-cost. Low-cost miners operate at maximum hash power, some solo and some in a pool if risk-averse, whereas high-cost miners either join a pool with minimal hash or stay offline. The equilibrium hash rate allocation and pool participation are shown to depend on the distribution of electricity cost and risk tolerance.)
+
+\section{Results and Discussion}
+Figure\,\ref{fig:violin} shows simulation results (10M draws per scenario) acroos three market conditions (good, average, bad) and electricity regimes (India, US, UK). Each panel displays normalized hash rate (left axis) and mean risk aversion (right axis) by strategy: solo, pool, or offline.
+
+In good markets, almost all miner participate; low-cost regions like India support both solo and pooled mining, while higher-cost regions rely almost exclusively on pooling. Risk-averse miners cluster in pools, while risk-prone ones prefer solo mining. In average markets, high-cost miners begin exiting. The US shows a shift toward offline status, while India remains stable. Pooling dominates across all active miners. In bad markets, nearly all high-cost miners go offline. Only low-cost miners in India remain acrive, splitting between pooling and shutdown . Solo mining vanishes across all regions.
+
+Across scenarios, risk aversion increases pooling, and cost determines survival. Pooling functions as a risk mitication tool until profitability thresholds are breached.
+
+\begin{figure}[ht]
+	\centering
+	\includegraphics[width=\linewidth]{img/MC_10M.png}
+	\caption{Monte Carlo simulation results (10M samples per scenario). Each row corresponds to a market condition (good, average, bad), and each column to an electricity price regime (India, US, UK). Violin plots show normalized hash rate (left axis) and mean risk aversion (right axis) by miner strategy.}
+	\label{fig:violin}
+\end{figure}
+
+
+\section{Conclusion}
+Our simulations show how miner strategies respond to market and cost heterogneity. Key outcomes are: (i) low-cost miners persist and pool, while high-cost miners strategy is to go offline under pressure; (ii) risk aversion drives pooling, but cannot sustain mining in low-profit regimes; (iii) solo mining is rare, surviving only in optimal conditions with low cost and low risk aversion.
+
+This framework enables analysis of equilibrium miner behavior under uncertainty and can support future policy simulations and real-world calibration.
+
+\bibliographystyle{plainnat}
+\bibliography{paper}
+
+\end{document}
+
+

@@ -9,6 +9,15 @@
 \usepackage[affil-it]{authblk}
 \geometry{margin=1in}
 
+% acronyms / glossary
+\usepackage[acronym,toc]{glossaries}
+\usepackage{siunitx}
+\setlength{\glsdescwidth}{15cm}
+\newglossary[slg]{symbolslist}{syi}{syg}{List of Symbols}
+\glsaddkey{unit}{\glsentrytext{\glslabel}}{\glsentryunit}{\GLsentryunit}{\glsunit}{\Glsunit}{\GLSunit}
+\loadglsentries{extra/acronyms.tex}
+\makeglossaries
+
 \title{Studying Bitcoin Miners' Strategies Under Uncertainty}
 \author{Marius M{\o}ller-Hansen, Enrico Tedeschi}
 \affil{UiT - The Arctic University of Norway}
@@ -23,30 +32,54 @@
 \end{abstract}
 
 \section{Introduction}
-Bitcoin mining plays a crucial role in maintaining the integrity and security of the Bitcoin network, yet it remains highly sensitive to market fluctuations and mining cost dynamics. Recent research has shown that uncertainty in operational costs—particularly electricity prices—and Bitcoin's market value significantly influence miners' strategic decisions. Our prior work \cite{tedeschi2024mining} demonstrates that optimizing for electricity cost reduction can outweigh profit gains from increased transaction fees. Similar incentive-driven mining behavior is explored in the blockchain game-theoretic models of \citeauthor{lewenberg2015inclusive} , and unlike prior work such as \citeauthor{kiayias2016blockchain}, which focuses on mining strategies under complete information or fixed protocols, we introduce a Bayesian game where miners make decisions based on beliefs over uncertain variables like hash rate distribution, electricity costs, and market price.
+Bitcoin's \gls{pow} mining is a decentralized competition where participants (\emph{miners}) use computational power for a chance to earn rewards. Miner behavior is influenced by uncertain conditions: the price of Bitcoin is highly volatile (annualized volatility $\sim47\%$ vs $\sim12\%$ for gold\footnote{BlackRock as of April 2024}), and the total network hash rate fluctuates as miners enter or exit. These uncertainties make mining a risky endeavor, and miners must decide how to strategize (e.g., investing in hardware, turning machines on/off, or joining mining pools) without full knowledge of other miners' conditions. In practice, miners differ widely in \emph{private parameters} like electricity cost, hardware efficiency, and risk tolerance, which can significantly affect theor profitability. For example, electricity costs for mining vary significantly by location and contracts\,\cite{tedeschi2024mining}, meaning a miner paying $\$0.03$\,kWh can profit under conditions where another paying $\$0.10$\,kWh would incur losses. Likewise, hardware (or hash rate) efficiency (H/J) and individual risk appetite (preference for stable vs. volatile income) vary across miners. We therefore face a strategic scenario of \emph{incomplete information}, where each miner knows their own cost and traits but not those of others.
+
+Game theory provides a natural framework to analyze mining strategies and incentives.However, many prior game-theoretic analyses of Bitcoin mining assume complete information or identical players for tractability\,\cite{kiayias2016blockchain}. In reality, miners operate uder \emph{asymmetric information}, as they cannot observe each other's exact consts or hashing capacity in real time. This calls for a Bayesian game approach. Bayesian game theory deals with strategic decision-making under incomplete information: each player draws a private \emph{type} (miner's cost and other traits) and chooses an optimal strategy given beliefs about others' types\,\cite{meirowitzpolitical}. We model Bitcoin mining as a Bayesian game to capture how heterogeneity in private types shapes miner behavior in equilibrium. Our focus is on understanding \gls{bne} of the mining game, such as a strategy profile where no miner can improve their expected payoff by deviating, given uncertainty about others. By formulating the mining competition in this framework we can ask: \emph{How do miners with different private costs and risk profile behave?}, and also: \emph{How does uncertainty about others influence strategic choices like when to mine or whether to join a pool?}, and: \emph{How do external factors (price swings, policy changes) shift the equilibrium outcomes?}
+
+%Bitcoin mining plays a crucial role in maintaining the integrity and security of the Bitcoin network, yet it remains highly sensitive to market fluctuations and mining cost dynamics. Recent research has shown that uncertainty in operational costs—particularly electricity prices—and Bitcoin's market value significantly influence miners' strategic decisions. Our prior work \cite{tedeschi2024mining} demonstrates that optimizing for electricity cost reduction can outweigh profit gains from increased transaction fees. Similar incentive-driven mining behavior is explored in the blockchain game-theoretic models of \citeauthor{lewenberg2015inclusive} , and unlike prior work such as \citeauthor{kiayias2016blockchain}, which focuses on mining strategies under complete information or fixed protocols, we introduce a Bayesian game where miners make decisions based on beliefs over uncertain variables like hash rate distribution, electricity costs, and market price.
 
 
-As our prior work examined the equilibrium between transaction fees and miner profitability, where we proposed a multidimensional profitability model that incorporates fee elasticity, operational costs, and electricity consumption, this paper extends that line of research by introducing a Bayesian Game Theory framework to model how miners form beliefs and adapt strategies during periods of high uncertainty. By incorporating private information—such as individual electricity rates and hardware efficiency—into each miner's type, we provide a comprehensive framework for analyzing decision-making in volatile market conditions. We assume that In a decentralized and competitive ecosystem, miners must continually adjust their strategies to maximize profitability under incomplete information about the network's future state.
+%As our prior work examined the equilibrium between transaction fees and miner profitability, where we proposed a multidimensional profitability model that incorporates fee elasticity, operational costs, and electricity consumption, this paper extends that line of research by introducing a Bayesian Game Theory framework to model how miners form beliefs and adapt strategies during periods of high uncertainty. By incorporating private information—such as individual electricity rates and hardware efficiency—into each miner's type, we provide a comprehensive framework for analyzing decision-making in volatile market conditions. We assume that In a decentralized and competitive ecosystem, miners must continually adjust their strategies to maximize profitability under incomplete information about the network's future state.
 
 % todo: find a problem we are solving by doing so
 
 \section{Background}
-Bitcoin mining can be framed as a competitive economic game, where participants expend resources to secure the network and earn rewards in the form of newly minted coins and transaction fees. Traditionally, this has been modeled using classical game theory or economic optimization frameworks \cite{kiayias2016blockchain}, and investigations on miner incentives around transaction inclusion, outlined that under fee pressure and block-space competition, miners deviate from protocol rules in pursuit of higher rewards\,\cite{lewenberg2015inclusive}. We aim to extend in this work a form of strategic adaptation under a Bayesian framework with private types. \citeauthor{kiayias2016blockchain} formalized the mining process as a non-cooperative game, introducing equilibrium strategies where miners choose their computational investment based on expected payoff. However, their model assumes complete information and rationality, making it less suited for capturing belief-based strategies during market volatility.
-
-Bayesian Game Theory provides a natural extension by incorporating uncertainty and private information through the concept of \emph{types}. In this framework, each miner has private information about their own capabilities, constraints, or costs, and forms probabilistic beliefs about those of others. As such, miners optimize their strategies based not only on public information (e.g., network hash rate, Bitcoin price) but also on their beliefs about hidden variables.
-
-Building upon these foundations, our contribution is to offer a formal Bayesian analysis of miner behavior by defining a structured type space and payoff function, followed by simulation-based equilibrium analysis. This allows us to benchmark strategic decisions against volatile parameters, such as hash rate shifts, block reward fluctuations, transaction fee variance, and electricity prices.
-
-\subsection{Bayesian Game Theory}
-Game theory provides a structured framework to analyze strategic interactions. In a Bayesian game, players possess private information\textemdash\emph{types}\textemdash and choose actions based on beliefs about others. This is particularly relevant to Bitcoin mining, where miners may not know other miners' costs, hash rates, or strategies.
-
-The key concepts include:
+In a Bayesian game, each player $i$ has a private type $\theta_i$ drawn from a common prior distribution. The type encapsulates the player's private information relevant to the game. In our context, a miner's type vector might be defined as:
+\begin{equation}
+	\theta_i=(c_i, \eta_i, \rho_i)
+\end{equation}
+where:
 \begin{itemize}
-	\item \textbf{Players}: which are the miners.
-	\item \textbf{Types}: private information such as hash rate, electricity cost, and risk tolerance.
-	\item \textbf{Strategies}: decisions to continue mining, reduce hash rate, switch networks, or stop mining.
-	\item \textbf{Payoffs}: determined by rewards (block reward and fees), costs, and relative contribution to total hash rate.
+	\item Electricity price $c_i$ is the cost (in \$ per kWh) that a miner $i$ pays for power.
+	\item Hardware efficiency $\eta_i$ is the hash power per watt (or energy cost per hash) for miner $i$'s equipment.
+	\item Risk tolerance $\rho_i$ is a parameter reflecting miner $i$'s attitude toward risk (variance in rewards)
 \end{itemize}
+Each miner knows their own $\theta_i$ but not the exact $\theta_j$ of others, only the distribution. Strategies in a Bayesian game are functions mapping a miner's type to an action. Here an action could include decisions like how much hash power to contribute or whether to participate in a mining pool. A \emph{strategy} for miner $i$ is a function $s_i$ that takes their type $\theta_i$ as input and outputs an action. The collection of strategy functions $\{s_i\}_{i=1}^N$ defines how all players behave based on their own private information. The solution concept is the \gls{bne}, which is a profile of strategy functions $\{s_i^*(\theta_i)\}$, one for each miner $i$, such that for every possible private type $\theta_i$, the strategy $s_i^*(\theta_i)$ is a best response to the equilibrium strategies of the other miners. Formally, the equilibrium condition requires that for each miner $i$ and any possible type $\theta_i$, the strategy $s_i^*$ satisfies:
+\begin{equation}
+	s_i^*(\theta_i) \in \arg\max_{s_i} \mathbb{E}_{\theta_{-i}} \left[ u_i(s_i(\theta_i), s_{-i}^*(\theta_{-i}); \theta_i) \right]
+\end{equation}
+where:
+\begin{itemize}
+	\item $s_i^*(\theta_i)$ is the equilibrium action taken by miner $i$ when their type is $\theta_i$,
+	\item $s_{-i}^*(\theta_{-i})$ denotes the equilibrium actions of the other miners for their types $\theta_{-i}$,
+	\item $u_i$ is the expected payoff,
+	\item and the expectation is taken over miner $i$'s beliefs about the types of other miners.
+\end{itemize}
+Intuitively, no miner, regardless of their private type, can gain by unilaterally deviating from $s_i^*$ if they expect others to play according to $s_{-i}^*$.
+
+\section{Bayesian Mining Game Model}
+We consider a static mining game played by $N$ miners simultaneously within a sinlge block interval. Each miner $i$ observes their type $\theta_i=(c_i,\eta_i,\rho_i)$ and chooses an action. The primary action is the hash rate $h_i$ that miner $i$ commits to mining (this can range from 0 up to their maximum hardware capacity). In addition, miners may choose whether to join a mining pool or mine solo, which we treat as part of their strategy.
+
+The payoff function captures the miner's expected reward minus costs. If a miner deploys hash power $h_i$ while others deploy $\{h_j : j\neq i\}$, the probability that miner $i$ finds the next block is approximately $\frac{h_i}{H}$ where $H=\sum_{j=1}^N h_j$ is the total network hash rate. The block reward is denoted $R$ ($3.125$ BTC currently) and let $P$ be the market price of Bitcoin (so $R \times P$ is the block rewards value in dollars). Miner $i$'s cost per hash (in \$ per hash per unit time) can be defined as $k_i$, which is increasing in $c_i$ and decreasing in $\eta_i$ (more efficient hardware or cheaper or cheaper electricity lowes $k_i$). For simplicity, we assume risk-nautral payoff in the base model. Miner $i$'s expected profit $u_i$ can be written as:
+\begin{equation}
+	u_i(h_i, h_{-i};\theta_i) = \frac{h_i}{\sum_{j=1}^{N}h_j}(R\cdot P) - k_i h_i
+\end{equation}
+This payoff reflects that miner $i$ earns the block reward with probability proportional to $h_i$, and incurs a cost $k_i h_i$ from electricity consumption and hardware waer. A risk-neutral miner will simply maximize this expected value. A risk-averse miner (low $\rho_i$) would effectively place an extra penalty on variance (more stable, lower returns). We incorporate risk aversion by considering that joining a mining pool yelds a steadier income stream: in a pool, miners contribute $h_i$ to a pool's total $H_{\text{pool}}$, and receive a share of each block reward equal to $\frac{h_i}{H_{\text{pool}}}RP$ (minus a small pool fee). Pool mining greatly reduces variance at the cost of fees and reliance on the pool operator. In our model, a miner's utility accounts for this trade-off: a risk-averse miner derives higher utility from the guaranteed portion of reward in a pool than from the equivalent expected value solo. Consequently, pool participation becomes a strategic choice: miners with high $\rho_i$ (risk-tolerant) might mine solo to avoid fees and capture full rewards, whereas miners with low $\rho_i$ prefer the insurance of a pool even if it slightly lowers their net expected payoff. Mining pools thus emerge endogenously as a risk-sharing mechanism\,\cite{albrecher2022blockchain}, and the equilibrium might involve a mix of solo and pooled miners depending on the distribution of risk preferences.
+
+Given the complexity of solving for analytic \gls{bne} in this $N$-player game, we employ a \emph{Monte Carlo simulation approach} to approximate the Bayesian Nash equilibrium under various scenarios. The simulation proceeds by drawing many random samples of the type vector $\theta = (\theta_1, \theta_2, \dots, \theta_N)$ from a specified joint distribution (e.g., assuming independent distributions for $c_i, \eta_i, \rho_i$ based on empirical or hypotetical data). For each draw, we simulate miners' best responses iteratively: initially, guess a set of strategies (e.g., thresholds on cost for mining or simple hashing levels), then let miners adjust their $h_i$ and pool-vs-solo decisions to improve payoffs given the other's strategies, until convergence to a stable profile. This process is repeated across numerous random realizations to estimate the equilibrium behavior in expectation. The Monte Carlo methodology allows us to observe how the system equilibrates on average, and to identify Bayesian Nash equilibria or $\epsilon$-equilibria in cases where an exact analytical solution is intractable. We validate that under equilibrium strategies, no miner type has incentive to deviate on average. Figure~\ref{%to do, include figure
+} illustrates an example outcome from the simulation, showing how miners with different cost types choose their hash rates and whether they pool, under a given price scenario.
+
+% Example of Monte Carlo simulation results for a Bayesian mining game. (This placeholder figure depicts two groups of miners: low-cost and high-cost. Low-cost miners operate at maximum hash power, some solo and some in a pool if risk-averse, whereas high-cost miners either join a pool with minimal hash or stay offline. The equilibrium hash rate allocation and pool participation are shown to depend on the distribution of electricity cost and risk tolerance.)
 
 \section{Model Setup}
 To formalize the miners' behavior under uncertainty, we model the mining process as a Bayesian game. Each miner aims to choose a strategy that maximizes their expected payoff, taking into account both their private information and their beliefs about the strategies and types of other miners.
