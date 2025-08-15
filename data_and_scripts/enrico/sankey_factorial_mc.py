@@ -191,11 +191,18 @@ if __name__ == "__main__":
     strat_by_cost = miners_df.groupby([cost_bins, 'strategy']).size().unstack(fill_value=0)
     print("\nStrategy distribution by cost regime:\n", strat_by_cost)
     # 6. Strategy distribution by hash rate regime
-    hash_bins = pd.qcut(miners_df.hash_rate, 3, labels=['low', 'medium', 'high'])
+    # Hash rate regime (dynamic labels)
+    hash_bins_tmp, hash_bin_edges = pd.qcut(miners_df.hash_rate, 3, retbins=True, duplicates='drop')
+    n_hash_bins = len(hash_bin_edges) - 1
+    hash_labels = ['low', 'medium', 'high'][:n_hash_bins]
+    hash_bins = pd.qcut(miners_df.hash_rate, n_hash_bins, labels=hash_labels, duplicates='drop')
     strat_by_hash = miners_df.groupby([hash_bins, 'strategy']).size().unstack(fill_value=0)
     print("\nStrategy distribution by hash rate regime:\n", strat_by_hash)
-    # 7. Strategy distribution by risk regime
-    risk_bins = pd.qcut(miners_df.risk, 3, labels=['low', 'medium', 'high'])
+    # Risk regime (dynamic labels)
+    risk_bins_tmp, risk_bin_edges = pd.qcut(miners_df.risk, 3, retbins=True, duplicates='drop')
+    n_risk_bins = len(risk_bin_edges) - 1
+    risk_labels = ['low', 'medium', 'high'][:n_risk_bins]
+    risk_bins = pd.qcut(miners_df.risk, n_risk_bins, labels=risk_labels, duplicates='drop')
     strat_by_risk = miners_df.groupby([risk_bins, 'strategy']).size().unstack(fill_value=0)
     print("\nStrategy distribution by risk regime:\n", strat_by_risk)
     # 8. Average and std of hash rate, cost, and risk for each strategy
