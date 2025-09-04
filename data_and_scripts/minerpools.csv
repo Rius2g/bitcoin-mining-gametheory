@@ -1,0 +1,30 @@
+,,,,,,,,,,,,
+,,,,,,,,,,,,
+,,,,,,,,,,,,
+,,,,,,,,,,,,
+,,,,,,,,> 5% of total hash,1-5% of total hash,< 1% total hash,,Current total hashrate (THs)
+,,,,,,Mining pools,,,,,,922
+,,,,,Rank,Name,Location,Hash (04.09.2025) EH/s,% of total hash,Fee,Payout model,Notes
+,,,,,1,Foundrydigital,US,"254,1","27,56 %",0 %,FPPS,"No fee, has other paid services, caters to instituional miners"
+,,,,,2,antpool,Bejing (China),"149,7","16,24 %",0% 4%,PPLNS FPPS,
+,,,,,3,viabtc,Shenzhen (China),"109,5","11,88 %",4% 2% 1%,FPPS PPLNS,
+,,,,,4,f2pool,Cayman Islands,"104,4","11,32 %",4% 2%,PPS+ PPLNS SOLO,
+,,,,,5,Spiderpool,Bejing (China),"84,7","9,19 %",0% 4%,PPLNS FPPS,
+,,,,,6,Mara,US,"38,5","4,18 %",0% 4%,PPLNS FPPS,"Not availible to ""external"" miners, only Marathons internal mining operations"
+,,,,,7,Luxor,US,"34,2","3,71 %","1% 0,5%",FPPS PPLNS,
+,,,,,8,SECPOOL,Hong Kong,"32,5","3,52 %","1,50 %",FPPS+,
+,,,,,9,Binance,Cayman Islands,"21,4","2,32 %",4 %,FPPS,"Not availible to ""external"" miners, only Marathons internal mining operations"
+,,,,,10,SBI,Japan,"17,1","1,85 %","1% 0,5%",FPPS PPLNS,
+,,,,,11,Unkown,,"17,1","1,85 %",,Unkown,
+,,,,,12,BraiinsPool,,"11,1","1,20 %","2,5 %",,
+,,,,,13,OCEAN,,"11,1","1,20 %",,,
+,,,,,14,BTC.com,China,"7,7","0,84 %",,,
+,,,,,15,MiningCore,Unkown,"4,3","0,47 %",,,
+,,,,,16,Ocean,USA,"4,3","0,47 %",,,
+,,,,,17,WhitePool,,"3,4","0,37 %",,,
+,,,,,18,Poolin,,"2,6","0,28 %",,,
+,,,,,19,1THash,,"1,7","0,18 %",,,
+,,,,,20,NiceHash,,"0,9","0,10 %",,,
+,,,,,,,,,,,,
+,,,,,,,,,,,,
+,,,,SUM,,,,"910,3","98,73 %",,,
