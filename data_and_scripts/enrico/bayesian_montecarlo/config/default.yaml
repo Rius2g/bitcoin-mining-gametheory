@@ -1,0 +1,57 @@
+simulation:
+  draws: 1000
+  miners: 500
+  max_iterations: 10
+
+metrics:
+  price:
+    type: lognormal
+    mean: 119000
+    sigma: 0.4
+  cost:
+    type: empirical_excel
+    file: "data/cost_rates.xlsx"
+  risk:
+    type: uniform
+    low: 0.0
+    high: 1.0
+
+rig_specs:
+  file: "data/rig_specs.xlsx"
+
+network:
+  hash_rate: 990000000  # 990 EH/s in TH/s
+  pool_fee: 0.025
+  block_time: 600  # seconds
+  block_reward: 3.125  # BTC
+  block_subsidy: 0.035  # BTC
+  discount_factor: 0.5
+
+game:
+  strategies: ["solo", "pool", "offline"]
+  convergence_tolerance: 1e-6
+
+visualization:
+  output_dir: "outputs"
+  plots_dir: "plots"
+  data_dir: "data"
+  colors:
+    solo: "#a8dadc"
+    pool: "#ffb4a2"
+    offline: "#e9c46a"
+
+factorial:
+  contexts:
+    good:
+      price: 200000
+      network_hash: 400000000
+      block_subsidy: 0.05
+    average:
+      price: 120000
+      network_hash: 600000000
+      block_subsidy: 0.025
+    bad:
+      price: 60000
+      network_hash: 1000000000
+      block_subsidy: 0.01
+  pool_sizes: [50000000, 100000000, 200000000]  # 50, 100, 200 EH/s
