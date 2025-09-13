@@ -19,6 +19,8 @@ from simulation.factorial import FactorialMonteCarlo
 from visualization.scatter import PlotScatter
 from visualization.distribution import PlotDistribution
 from visualization.violin import PlotViolin
+from visualization.strategy import PlotStrategy
+from visualization.factorial import PlotFactorial
 from utils.logger import setup_logging, logger
 
 
@@ -63,6 +65,7 @@ def run_basic_simulation(config, args):
         scatter_plot = PlotScatter(config)
         dist_plot = PlotDistribution(config)
         violin_plot = PlotViolin(config)
+        strategy_plot = PlotStrategy(config)
 
         # Get sample data for plotting
         if result.miners_df is not None and not result.miners_df.empty:
@@ -74,7 +77,7 @@ def run_basic_simulation(config, args):
                 args.pool_hash
             )
 
-        # Generate plots
+        # Generate comprehensive plots
         scatter_plot.plot(
             sample_df,
             save_path=str(plots_dir / f"{prefix}_scatter.png")
@@ -89,6 +92,34 @@ def run_basic_simulation(config, args):
             sample_df,
             save_path=str(plots_dir / f"{prefix}_violin.png")
         )
+
+        # Strategy-focused plots
+        strategy_plot.plot_strategy_shares(
+            sample_df,
+            save_path=str(plots_dir / f"{prefix}_strategy_shares.png")
+        )
+
+        strategy_plot.plot_scatter_with_rug(
+            sample_df,
+            save_path=str(plots_dir / f"{prefix}_scatter_rug.png")
+        )
+
+        strategy_plot.plot_activation_heatmap(
+            sample_df,
+            save_path=str(plots_dir / f"{prefix}_heatmap.png")
+        )
+
+        # Sankey diagrams
+        from visualization.sankey import SankeyVisualizer
+        sankey_viz = SankeyVisualizer()
+        
+        try:
+            sankey_viz.save_decision_flow(
+                sample_df,
+                str(plots_dir / f"{prefix}_decision_flow.html")
+            )
+        except Exception as e:
+            logger.warning(f"Failed to create Sankey decision flow: {e}")
 
     logger.info(f"Basic simulation completed. Results saved to {output_dir}")
 
@@ -108,16 +139,47 @@ def run_factorial_simulation(config, args):
     # Create output directories
     output_dir, plots_dir, data_dir = create_output_dirs(config)
 
-    # Save results for each context
+    # Save results for each context and generate plots
+    if args.generate_plots:
+        # Initialize plotters
+        factorial_plot = PlotFactorial(config)
+        
+        # Prepare data for factorial plots
+        dfs_by_context = {}
+        for context_name, result in results.items():
+            if result.miners_df is not None:
+                # Use first draw for plotting
+                sample_df = result.miners_df[result.miners_df['draw_idx'] == 0].copy()
+                dfs_by_context[context_name] = sample_df
+
+        # Generate factorial comparison plots
+        if dfs_by_context:
+            factorial_plot.plot_context_violin_by_cost(
+                dfs_by_context,
+                save_path=str(plots_dir / "factorial_context_violin.png")
+            )
+            
+            # Compare contexts for key metrics
+            summary_by_context = {}
+            for context_name, result in results.items():
+                summary_by_context[context_name] = result.summary_df
+                
+            factorial_plot.plot_context_comparison(
+                summary_by_context,
+                metric='pct_pool',
+                save_path=str(plots_dir / "factorial_pool_comparison.png")
+            )
+
     for context_name, result in results.items():
         result.save(str(data_dir), f"factorial_{context_name}")
 
         if args.generate_plots and result.miners_df is not None:
-            # Generate plots for each context
+            # Generate individual context plots
             sample_df = result.miners_df[result.miners_df['draw_idx'] == 0].copy()
 
             scatter_plot = PlotScatter(config)
             violin_plot = PlotViolin(config)
+            strategy_plot = PlotStrategy(config)
 
             scatter_plot.plot(
                 sample_df,
@@ -130,6 +192,26 @@ def run_factorial_simulation(config, args):
                 title_suffix=f" ({context_name})",
                 save_path=str(plots_dir / f"factorial_{context_name}_violin.png")
             )
+
+            # Additional strategy plots for each context
+            strategy_plot.plot_strategy_shares(
+                sample_df,
+                title_suffix=f" ({context_name})",
+                save_path=str(plots_dir / f"factorial_{context_name}_strategy_shares.png")
+            )
+
+            # Sankey diagrams for each context
+            from visualization.sankey import SankeyVisualizer
+            sankey_viz = SankeyVisualizer()
+            
+            try:
+                sankey_viz.save_decision_flow(
+                    sample_df,
+                    str(plots_dir / f"factorial_{context_name}_decision_flow.html"),
+                    title=f"Miner Decision Flow ({context_name.capitalize()})"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to create Sankey decision flow for {context_name}: {e}")
 
     logger.info(f"Factorial simulation completed. Results saved to {output_dir}")
 
@@ -202,8 +284,9 @@ def main():
         config = config_loader.load()
 
         # Log configuration summary
+        actual_draws = args.draws if hasattr(args, 'draws') and args.draws else config.simulation.draws
         config_summary = {
-            "draws": config.simulation.draws,
+            "draws": actual_draws,
             "miners": config.simulation.miners,
             "price_sampler": config.metrics.price.type,
             "cost_sampler": config.metrics.cost.type,

@@ -19,6 +19,7 @@ class BayesianGame:
         self.miners: List[MinerType] = []
         self.convergence_tolerance = 1e-6
         self.max_iterations = 10
+        self.pool_hash_override = None  # Track if pool hash is fixed
 
     def add_miner(self, miner: MinerType):
         """Add a miner to the game."""
@@ -29,21 +30,25 @@ class BayesianGame:
         self.miners.extend(miners)
 
     def update_game_state(self, btc_price: float, pool_hash_override: Optional[float] = None):
-        """Update the game state for all miners."""
-        # Sample network parameters
-        network_hash = self.network_sampler.sample_total_hash()
-        pool_fee = self.network_sampler.sample_pool_fee()
-        block_time = self.network_sampler.sample_block_time()
+        """Update game state with current market conditions."""
+        # Store the override setting
+        self.pool_hash_override = pool_hash_override
+        
+        # Calculate block reward and network parameters
         block_reward = self.network_sampler.sample_block_reward(btc_price)
+        network_hash = self.network_sampler.sample_total_hash()
+        block_time = self.network_sampler.sample_block_time()
 
-        # Calculate pool hash rate
+        # Set pool hash: either override or start with 0 for endogenous calculation
         if pool_hash_override is not None:
             pool_hash = pool_hash_override
         else:
-            # Will be updated in equilibrium finding
             pool_hash = 0.0
 
-        # Update each miner
+        # Sample pool fee based on pool size
+        pool_fee = self.network_sampler.sample_pool_fee(pool_hash)
+
+        # Update all miners with current game state
         for miner in self.miners:
             miner.update_game_state(
                 network_hash=network_hash,
@@ -67,22 +72,23 @@ class BayesianGame:
         for iteration in range(max_iterations):
             prev_strategies = [miner.strategy for miner in self.miners]
 
-            # Update pool hash based on current strategies
-            pool_hash = sum(miner.actual_hash_rate for miner in self.miners
-                          if miner.strategy == 'pool')
-
-            # Update pool hash for all miners
-            for miner in self.miners:
-                miner.pool_hash_rate = pool_hash
-
             # Each miner chooses best response
             for miner in self.miners:
                 self.strategy.choose_action(miner, self)
 
-            # Check convergence
+            # Check convergence before updating pool hash
             current_strategies = [miner.strategy for miner in self.miners]
             if all(curr == prev for curr, prev in zip(current_strategies, prev_strategies)):
                 return True
+
+            # Update pool hash ONLY if not overridden (like legacy code)
+            if self.pool_hash_override is None:
+                pool_hash = sum(miner.actual_hash_rate for miner in self.miners
+                              if miner.strategy == 'pool')
+                
+                # Update pool hash for all miners for next iteration
+                for miner in self.miners:
+                    miner.pool_hash_rate = pool_hash
 
         return False
 

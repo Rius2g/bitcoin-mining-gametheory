@@ -16,9 +16,13 @@ class PlotViolin:
     def __init__(self, config=None):
         self.config = config
         self.colors = {
-            'potential': '#a8dadc',
-            'actual': '#ffb4a2'
-        }
+            'solo': '#a8dadc',
+            'pool': '#ffb4a2',
+            'offline': '#e9c46a',
+            'potential': '#a8dadc',  # For potential hash rate
+            'actual': '#ffb4a2'      # For actual hash rate
+        } if config is None else {**config.visualization.colors, 
+                                  'potential': '#a8dadc', 'actual': '#ffb4a2'}
 
     def plot_potential_vs_actual(self, df: pd.DataFrame,
                                cost_bins: int = 3,
@@ -26,70 +30,80 @@ class PlotViolin:
                                save_path: Optional[str] = None):
         """Plot violin plots of potential vs actual hash rates by cost level.
 
+        Based on legacy plot_potential_vs_actual function.
+
         Args:
             df: DataFrame with miner data
             cost_bins: Number of cost bins to create
             title_suffix: Suffix to append to title
             save_path: Path to save plot (optional)
         """
-        # Create cost bins
-        df = df.copy()
-        df['cost_bin'] = pd.qcut(df['cost_per_kwh'], cost_bins,
-                                labels=[f'Low ({i+1})' for i in range(cost_bins)])
+        # Pick three cost levels like in legacy code
+        cost_vals = sorted(df['cost_per_kwh'].unique())
+        low = cost_vals[0]
+        med = cost_vals[len(cost_vals)//2] 
+        high = cost_vals[-1]
+        
+        df3 = df[df['cost_per_kwh'].isin([low, med, high])].copy()
+        level_map = {low: 'Low', med: 'Medium', high: 'High'}
+        df3['energy_level'] = df3['cost_per_kwh'].map(level_map)
 
-        # Prepare data
-        bin_labels = sorted(df['cost_bin'].unique())
+        # Prepare data arrays
+        levels = ['Low', 'Medium', 'High']
+        positions = np.arange(1, len(levels) + 1)
+        offset = 0.2
+        
         potential_data = []
         actual_data = []
-
-        for bin_label in bin_labels:
-            subset = df[df['cost_bin'] == bin_label]
-            potential_data.append(subset['max_hash_rate'].values)
-            actual_data.append(subset['actual_hash_rate'].values)
+        
+        for level in levels:
+            level_data = df3[df3['energy_level'] == level]
+            # Potential = max_hash_rate (capacity)
+            potential_data.append(level_data['max_hash_rate'].values)
+            # Actual = actual_hash_rate  
+            actual_data.append(level_data['actual_hash_rate'].values)
 
         # Create plot
-        fig, ax = plt.subplots(figsize=(12, 6))
-
-        positions = np.arange(len(bin_labels))
-        offset = 0.2
+        fig, ax = plt.subplots(figsize=(10, 6))
 
         # Plot potential (capacity)
         vp_pot = ax.violinplot(potential_data, positions=positions - offset,
-                              widths=0.3, showmeans=True, showmedians=True)
+                              widths=0.3, showmeans=False, showmedians=True)
 
         # Plot actual
         vp_act = ax.violinplot(actual_data, positions=positions + offset,
-                              widths=0.3, showmeans=True, showmedians=True)
+                              widths=0.3, showmeans=False, showmedians=True)
 
-        # Color the violins
+        # Color the potential bodies
         for body in vp_pot['bodies']:
             body.set_facecolor(self.colors['potential'])
             body.set_edgecolor('black')
             body.set_alpha(0.7)
-
+        
+        # Color the actual bodies  
         for body in vp_act['bodies']:
             body.set_facecolor(self.colors['actual'])
             body.set_edgecolor('black')
             body.set_alpha(0.7)
 
-        # Set labels and formatting
+        # Customize plot
         ax.set_xticks(positions)
-        ax.set_xticklabels(bin_labels)
-        ax.set_xlabel('Electricity Cost Level')
+        ax.set_xticklabels(levels)
+        ax.set_xlabel('Energy Cost Level')
         ax.set_ylabel('Hash Rate (TH/s)')
-        ax.set_title(f'Potential vs Actual Hash Rate by Cost Level{title_suffix}')
-        ax.grid(True, alpha=0.3)
+        ax.set_title(f'Potential vs. Actual Hash Rate by Cost Level{title_suffix}')
 
-        # Legend
+        # Create legend
         from matplotlib.patches import Patch
-        legend_elements = [
-            Patch(facecolor=self.colors['potential'], edgecolor='black',
+        legend_handles = [
+            Patch(facecolor=self.colors['potential'], edgecolor='black', 
                   label='Potential', alpha=0.7),
-            Patch(facecolor=self.colors['actual'], edgecolor='black',
+            Patch(facecolor=self.colors['actual'], edgecolor='black', 
                   label='Actual', alpha=0.7)
         ]
-        ax.legend(handles=legend_elements, loc='upper right')
+        ax.legend(handles=legend_handles, loc='upper right')
 
+        ax.grid(linestyle='--', alpha=0.5)
         plt.tight_layout()
 
         if save_path:

@@ -114,8 +114,8 @@ class FactorialMonteCarlo:
                 def sample_total_hash(self):
                     return self.network_hash
 
-                def sample_pool_fee(self):
-                    return self.original_sampler.sample_pool_fee()
+                def sample_pool_fee(self, pool_hash_rate: float = 0.0):
+                    return self.original_sampler.sample_pool_fee(pool_hash_rate)
 
                 def sample_block_time(self):
                     return self.original_sampler.sample_block_time()

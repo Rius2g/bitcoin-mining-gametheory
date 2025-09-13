@@ -34,36 +34,33 @@ class MinerType:
         """Calculate daily electricity cost."""
         # Convert efficiency from J/TH to kWh/TH
         kwh_per_th = self.efficiency / 3.6e6
-        # Daily energy consumption in kWh
-        daily_kwh = kwh_per_th * self.actual_hash_rate * 86400
+        # Daily energy consumption in kWh (use max_hash_rate for utility calculation)
+        daily_kwh = kwh_per_th * self.max_hash_rate * 86400
         return self.cost_per_kwh * daily_kwh
 
     def revenue_solo(self) -> float:
         """Expected daily revenue from solo mining."""
-        if self.actual_hash_rate == 0:
-            return 0.0
-
         # Blocks per day found by network
         network_blocks_per_day = 86400 / self.block_time
-        # Miner's share of network blocks
-        miner_share = self.actual_hash_rate / (self.network_hash_rate + self.actual_hash_rate)
+        # Miner's share of network blocks (use max_hash_rate for utility calculation)
+        miner_share = self.max_hash_rate / (self.network_hash_rate + self.max_hash_rate)
         # Expected blocks per day
         expected_blocks = network_blocks_per_day * miner_share
-        # Revenue per block
-        revenue_per_block = self.block_reward * self.btc_price
-        return expected_blocks * revenue_per_block
+        # Revenue per block (block_reward is already in USD)
+        return expected_blocks * self.block_reward
 
     def revenue_pool(self) -> float:
         """Expected daily revenue from pool mining."""
-        if self.actual_hash_rate == 0 or self.pool_hash_rate == 0:
+        if self.pool_hash_rate == 0:
             return 0.0
 
-        # Blocks per day found by pool
-        pool_blocks_per_day = 86400 / self.block_time
-        # Miner's share of pool blocks
-        miner_share = self.actual_hash_rate / self.pool_hash_rate
-        # Revenue per block (after pool fee)
-        revenue_per_block = self.block_reward * self.btc_price * (1 - self.pool_fee)
+        # Blocks per day found by the pool (proportional to pool's network share)
+        network_blocks_per_day = 86400 / self.block_time
+        pool_blocks_per_day = self.pool_hash_rate / self.network_hash_rate * network_blocks_per_day
+        # Miner's share of pool blocks (use max_hash_rate for utility calculation)
+        miner_share = self.max_hash_rate / self.pool_hash_rate
+        # Revenue per block (after pool fee, block_reward is already in USD)
+        revenue_per_block = self.block_reward * (1 - self.pool_fee)
         return pool_blocks_per_day * miner_share * revenue_per_block
 
     def utility_solo(self) -> float:
